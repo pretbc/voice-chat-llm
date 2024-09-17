@@ -11,8 +11,13 @@ from langchain_ollama import ChatOllama
 
 from src.audio_processing import transcribe_audio, text_to_speach
 from src.webRTC import WebRTCHandler
-from src.chat import ChatAssistant
+from src.chat import ChatAssistant, END
 from typing import Literal
+
+CONVERSATION_ITERATIONS = 20
+
+if 'is_running' not in st.session_state:
+    st.session_state.is_running = True
 
 
 @st.cache_resource(show_spinner=True)
@@ -50,12 +55,12 @@ def user_respond(msg_placeholder, webrtc_ctx: WebRTCHandler):
 
     with msg_placeholder.container():
         with st.spinner("Mów teraz. Nagrywanie odpowiedzi..."):
-            time.sleep(5)
+            time.sleep(6)
 
     webrtc_ctx.mute_audio(True)
-
-    with st.spinner("Przetwarzanie...."):
-        text = transcribe_audio(webrtc_ctx.audio_data, load_whisper_model(), sample_rate=webrtc_ctx.sample_rate)
+    with msg_placeholder.container():
+        with st.spinner("Przetwarzanie..."):
+            text = transcribe_audio(webrtc_ctx.audio_data, load_whisper_model(), sample_rate=webrtc_ctx.sample_rate)
 
     return text
 
@@ -80,16 +85,23 @@ def main():
     msg_placeholder = st.empty()
 
     load_whisper_model()
-    chat_assistant = ChatAssistant(ChatOllama(model='gemma2', temperature=0.7))
+    chat_assistant = ChatAssistant(ChatOllama(model='gemma2', temperature=0.9))
     webrtc_handler = WebRTCHandler()
 
-    while webrtc_handler.is_playing:
+    while webrtc_handler.is_playing and st.session_state.is_running:
         webrtc_handler.mute_audio(True)
+        ai_message_count = sum(1 for msg in chat_assistant.chat_history if isinstance(msg, AIMessage))
+
         if not chat_assistant.chat_history:
             respond = chat_assistant.invoke()
         else:
             user_input = user_respond(msg_placeholder, webrtc_handler)
             respond = chat_assistant.invoke(user_input)
+
+        if ai_message_count >= CONVERSATION_ITERATIONS:
+            respond = chat_assistant.invoke(END)
+            st.session_state.is_running = False
+
         update_chat(chat_placeholder, chat_assistant.chat_history)
         play_voice_chat(respond, audio_placeholder)
 

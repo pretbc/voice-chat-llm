@@ -5,6 +5,8 @@ from langchain_core.runnables import RunnableWithMessageHistory
 from langchain.schema import AIMessage
 from random import choice as r_choice
 
+END = 'end'
+
 SYSTEM_PROMPT = """
 You are a supportive AI assistant. Answer all questions in brief, one-sentence responses. 
 Keep the conversation centered around the user’s emotions and experiences.
@@ -27,9 +29,16 @@ WELCOME_AI_MESSAGE = [
     AIMessage(content="Hej! Jak się czujesz w tym momencie?")
 ]
 
+GOODBYE_AI_MESSAGE = [
+    AIMessage(content="Dziękuję za rozmowę! Mam nadzieję, że Ci się podobało."),
+    AIMessage(content="Dzięki za rozmowę! Mam nadzieję, że czujesz się lepiej."),
+    AIMessage(content="Dziękuję za rozmowę! Do zobaczenia!"),
+]
+
 
 class ChatAssistant:
     def __init__(self, llm: BaseChatModel):
+        self._llm = llm
         self._chat_history = ChatMessageHistory()
         self._llm_chat = self._init_chat_runnable(llm)
 
@@ -55,6 +64,36 @@ class ChatAssistant:
         if user_input is None:
             ai_response = r_choice(WELCOME_AI_MESSAGE)
             self._chat_history.add_ai_message(ai_response)
+        elif user_input == END:
+
+            prompt = ChatPromptTemplate.from_messages([
+                (
+                    "system",
+                    """
+                    Summarize given chat_history in brief in one-sentence.
+                    
+                    Use this phrase to say goodbye after summarizing the chat history: 
+                    {goodbye_phrase}
+                    
+                    ----
+
+                    Always communicate in Polish.
+                    """
+                ),
+                ("human", "Summarize {chat_history}"),
+            ])
+
+            stored_msg = self._chat_history.messages
+            self._chat_history.clear()
+            [self._chat_history.add_message(msg) for msg in stored_msg[:-3]]
+
+            chain = prompt | self._llm
+            ai_response = chain.invoke({
+                "goodbye_phrase": r_choice(GOODBYE_AI_MESSAGE).content,
+                "chat_history": self._chat_history.messages
+            })
+            self._chat_history.add_message(ai_response)
+
         else:
             ai_response = self._llm_chat.invoke(
                 {"input": user_input}, {"configurable": {"session_id": "unused"}}
