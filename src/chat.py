@@ -71,21 +71,20 @@ class ChatAssistant:
                     "system",
                     """
                     Summarize given chat_history in brief in one-sentence.
-                    
+                                        
                     Use this phrase to say goodbye after summarizing the chat history: 
                     {goodbye_phrase}
-                    
                     ----
 
                     Always communicate in Polish.
                     """
                 ),
-                ("human", "Summarize {chat_history}"),
+                ("human", "Summarize chat history: {chat_history}"),
             ])
 
             stored_msg = self._chat_history.messages
             self._chat_history.clear()
-            [self._chat_history.add_message(msg) for msg in stored_msg[:-3]]
+            [self._chat_history.add_message(msg) for msg in stored_msg[:-1]]
 
             chain = prompt | self._llm
             ai_response = chain.invoke({

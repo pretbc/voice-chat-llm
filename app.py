@@ -14,7 +14,7 @@ from src.webRTC import WebRTCHandler
 from src.chat import ChatAssistant, END
 from typing import Literal
 
-CONVERSATION_ITERATIONS = 20
+CONVERSATION_ITERATIONS = 15
 
 if 'is_running' not in st.session_state:
     st.session_state.is_running = True
@@ -90,7 +90,7 @@ def main():
 
     while webrtc_handler.is_playing and st.session_state.is_running:
         webrtc_handler.mute_audio(True)
-        ai_message_count = sum(1 for msg in chat_assistant.chat_history if isinstance(msg, AIMessage))
+        ai_message_count = sum(1 for msg in chat_assistant.chat_history if isinstance(msg, HumanMessage))
 
         if not chat_assistant.chat_history:
             respond = chat_assistant.invoke()
@@ -98,7 +98,7 @@ def main():
             user_input = user_respond(msg_placeholder, webrtc_handler)
             respond = chat_assistant.invoke(user_input)
 
-        if ai_message_count >= CONVERSATION_ITERATIONS:
+        if ai_message_count > CONVERSATION_ITERATIONS:
             respond = chat_assistant.invoke(END)
             st.session_state.is_running = False
 
