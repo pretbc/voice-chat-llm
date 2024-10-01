@@ -1,0 +1,15 @@
+#credentials:
+#  usernames:
+#    survey:
+#      email: 'dummy@email'
+#      failed_login_attempts: 0
+#      name: 'some name'
+#      password: 'some password'
+#      roles:
+#        - admin
+#        - viewer
+#        - editor
+#cookie:
+#  expiry_days: 0
+#  key: 'some key'
+#  name: 'some name'

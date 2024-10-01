@@ -3,7 +3,6 @@ import tempfile
 import soundfile as sf
 
 from gtts import gTTS
-from whisper import Whisper
 
 
 def transcribe_audio(audio, whisper_model, sample_rate):

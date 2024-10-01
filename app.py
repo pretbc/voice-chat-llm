@@ -10,11 +10,24 @@ from langchain_core.messages import HumanMessage, AIMessage
 from langchain_ollama import ChatOllama
 
 from src.audio_processing import transcribe_audio, text_to_speach
+from src.auth import authenticate_user
 from src.webRTC import WebRTCHandler
 from src.chat import ChatAssistant, END
 from typing import Literal
 
 CONVERSATION_ITERATIONS = 15
+SPINNER_MSG = "Mów teraz. Nagrywanie odpowiedzi..."
+
+MAX_ATTEMPTS = 3  # Set your maximum attempts here
+COOLDOWN_PERIOD = 60  # Cooldown period in seconds (1 minute)
+
+# Initialize session state variables
+if 'login_attempts' not in st.session_state:
+    st.session_state.login_attempts = 0
+if 'cooldown_start' not in st.session_state:
+    st.session_state.cooldown_start = None
+
+authenticator = authenticate_user("auth.yaml")
 
 if 'is_running' not in st.session_state:
     st.session_state.is_running = True
@@ -54,7 +67,7 @@ def user_respond(msg_placeholder, webrtc_ctx: WebRTCHandler):
     webrtc_ctx.mute_audio(False)
 
     with msg_placeholder.container():
-        with st.spinner("Mów teraz. Nagrywanie odpowiedzi..."):
+        with st.spinner(SPINNER_MSG):
             time.sleep(6)
 
     webrtc_ctx.mute_audio(True)
@@ -77,8 +90,56 @@ def play_voice_chat(respond: AIMessage, audio_placeholder):
     audio_placeholder.empty()
 
 
+def login():
+    try:
+        authenticator.login()
+    except AttributeError:
+        st.error("Authentication failed due to missing or invalid configuration.")
+    else:
+        if st.session_state['authentication_status']:
+            st.session_state.login_attempts = 0
+            st.session_state.cooldown_start = None  # Reset cooldown
+            authenticator.logout()
+            main()
+        elif st.session_state['authentication_status'] is False:
+            st.session_state.login_attempts += 1
+            if st.session_state.login_attempts >= MAX_ATTEMPTS:
+                if st.session_state.cooldown_start is None:
+                    st.session_state.cooldown_start = time.time()
+                elapsed_time = time.time() - st.session_state.cooldown_start
+
+                if elapsed_time < COOLDOWN_PERIOD:
+                    remaining_time = COOLDOWN_PERIOD - elapsed_time
+                    countdown_placeholder = st.empty()
+                    for remaining in range(int(remaining_time), 0, -1):
+                        countdown_placeholder.error(
+                            f'Maximum login attempts exceeded. Please wait {remaining} seconds before trying again.'
+                        )
+                        time.sleep(1)  # Sleep for a second to create a countdown effect
+
+                    countdown_placeholder.success('You can try logging in again.')
+                    st.session_state.login_attempts = 0  # Reset attempts after cooldown
+                    st.session_state.cooldown_start = None  # Reset cooldown state
+                else:
+                    st.session_state.login_attempts = 0
+                    st.session_state.cooldown_start = None
+                    st.warning('You can try logging in again.')
+            else:
+                st.error('Username/password is incorrect')
+        elif st.session_state['authentication_status'] is None:
+            st.warning('Please enter your username and password')
+
+
 def main():
     st.title("Voice Chat with AI Assistant")
+    st.subheader(
+        "Please allow the browser to access your microphone then press start button to begin the conversation."
+    )
+    st.subheader(f"The conversation will end after :orange[{CONVERSATION_ITERATIONS}] iterations.")
+    st.subheader(
+        f"User should wait for a :red[spinner] msg: :orange[\"{SPINNER_MSG}\"] to appear, before speaking.",
+        divider="gray"
+    )
 
     chat_placeholder = st.empty()
     audio_placeholder = st.empty()
@@ -107,4 +168,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    login()

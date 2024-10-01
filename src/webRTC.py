@@ -18,7 +18,7 @@ class WebRTCHandler:
         )
 
     def audio_frame_callback(self, frame):
-        self._sample_rate = frame.sample_rate * 2
+        self._sample_rate = 96_000 if frame.sample_rate < 96_000 else frame.sample_rate
         audio = frame.to_ndarray().flatten()
         with self.lock:
             self._audio_buffer.append(audio)

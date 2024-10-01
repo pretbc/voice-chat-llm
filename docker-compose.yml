@@ -1,0 +1,22 @@
+version: '3.8'
+
+x-config-pod-base: &config-pod-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+  stop_signal: SIGKILL
+  tty: true
+  runtime: nvidia
+  shm_size: "2gb"
+  stdin_open: true
+  ports:
+    - "9080:9080"
+
+services:
+  voicechat:
+    <<: *config-pod-base
+    container_name: voicechat
+    environment:
+      - ENV_VAR_NAME=value  # Example of adding an environment variable
+    volumes:
+      - ./data:/app/data     # Example of mounting a volume from host to container
