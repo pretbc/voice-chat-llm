@@ -10,7 +10,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from langchain_ollama import ChatOllama
 
 from src.audio_processing import transcribe_audio, text_to_speach
-from src.auth import authenticate_user
+from src.auth import authenticate_user, auth_token
 from src.webRTC import WebRTCHandler
 from src.chat import ChatAssistant, END
 from typing import Literal
@@ -27,7 +27,7 @@ if 'login_attempts' not in st.session_state:
 if 'cooldown_start' not in st.session_state:
     st.session_state.cooldown_start = None
 
-authenticator = authenticate_user("auth.yaml")
+authenticator = authenticate_user()
 
 if 'is_running' not in st.session_state:
     st.session_state.is_running = True
@@ -96,10 +96,11 @@ def login():
     except AttributeError:
         st.error("Authentication failed due to missing or invalid configuration.")
     else:
-        if st.session_state['authentication_status']:
+        if st.session_state['authentication_status'] or auth_token():
+            if not st.session_state['authentication_status']:
+                st.session_state['authentication_status'] = True
             st.session_state.login_attempts = 0
             st.session_state.cooldown_start = None  # Reset cooldown
-            authenticator.logout()
             main()
         elif st.session_state['authentication_status'] is False:
             st.session_state.login_attempts += 1
