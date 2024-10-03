@@ -1,10 +1,7 @@
-import datetime
-
 import streamlit as st
 import streamlit_authenticator as stauth
 import yaml
 import jwt
-import time
 
 from yaml.loader import SafeLoader
 
@@ -53,14 +50,3 @@ def auth_token(config_path: str = "auth.yaml"):
         except Exception as e:
             st.error(f"An error occurred during token validation: {str(e)}")
     return False
-
-
-def generate_token(config_path: str = "auth.yaml") -> str:
-    with open(config_path) as file:
-        config = yaml.load(file, Loader=yaml.SafeLoader)
-    secret_key = config['token']
-    payload = {
-        'sub': next(iter(config['credentials']['usernames'])),
-    }
-    token = jwt.encode(payload, secret_key, algorithm='HS256')
-    return token
